@@ -10,8 +10,8 @@ public class RhythmGameCore : MonoBehaviour
     public AudioClip[] musicList;
 
     [Header("=== 判定设置 ===")]
-    public float perfectWindow = 0.1f;    // 放宽到0.1秒
-    public float goodWindow = 0.3f;       // 放宽到0.3秒
+    public float perfectWindow = 0.1f;
+    public float goodWindow = 0.3f;
 
     [Header("=== 连击设置 ===")]
     public int combo = 0;
@@ -28,11 +28,11 @@ public class RhythmGameCore : MonoBehaviour
     public float ringGrowDuration = 0.8f;
 
     [Header("=== 手动卡点模式 ===")]
-    public string beatFilePath = "beats.txt";    // 节拍数据文件名
-    public float beatOffset = 0f;                // 偏移量（负=提前，正=延后）
-    private float[] manualBeats;                 // 存储手动节拍时间
-    private int beatIndex = 0;                   // 当前节拍索引
-    private float lastProcessedBeatTime = -1f;   // 记录已经被使用过的节拍时间
+    public string beatFilePath = "beats.txt";
+    public float beatOffset = 0f;
+    private float[] manualBeats;
+    private int beatIndex = 0;
+    private float lastProcessedBeatTime = -1f;
 
     [Header("=== 颜色 ===")]
     public Color perfectColor = Color.yellow;
@@ -67,7 +67,6 @@ public class RhythmGameCore : MonoBehaviour
 
         if (beatRing != null) beatRing.transform.localScale = Vector3.one * 0.5f;
 
-        // 加载手动节拍数据
         LoadManualBeats();
 
         Debug.Log("节奏游戏核心启动 | 手动卡点模式");
@@ -77,7 +76,6 @@ public class RhythmGameCore : MonoBehaviour
     {
         if (audioSource == null || !audioSource.isPlaying) return;
 
-        // 手动卡点模式：根据录制的节拍时间触发
         if (manualBeats != null && beatIndex < manualBeats.Length)
         {
             float nextBeatTime = manualBeats[beatIndex] + beatOffset;
@@ -88,10 +86,8 @@ public class RhythmGameCore : MonoBehaviour
             }
         }
 
-        // 更新圆圈预告
         UpdateBeatRing();
 
-        // 检测玩家输入
         if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
         {
             lastClickTime = Time.time;
@@ -130,18 +126,16 @@ public class RhythmGameCore : MonoBehaviour
 
     void OnBeatDetected(float beatTime)
     {
-        lastBeatTime = Time.time;  // 用游戏时间，不是音乐时间
-        lastProcessedBeatTime = -1f;  // 重置节拍消费标记
+        lastBeatTime = Time.time;
+        lastProcessedBeatTime = -1f;
 
-        // 节拍到达时，圆圈闪烁一下
         if (beatRing != null)
         {
             StartCoroutine(BeatRingFlash());
         }
 
-        Debug.Log("节拍！{beatTime:F2}s (音乐时间)");
+        Debug.Log($"节拍！{beatTime:F2}s (音乐时间)");
 
-        // 如果有缓冲输入，立即判定
         if (hasBufferedInput)
         {
             EvaluateInput();
@@ -171,7 +165,6 @@ public class RhythmGameCore : MonoBehaviour
 
         string judgeResult = "Miss";
 
-        // 检查这个节拍是否已经被用过了
         if (lastBeatTime <= lastProcessedBeatTime)
         {
             judgeResult = "Miss";
@@ -194,26 +187,25 @@ public class RhythmGameCore : MonoBehaviour
         {
             judgeResult = "Perfect";
             combo++;
-            Debug.Log(" Perfect！差值 {minDistance:F3}s 连击 x{combo}");
+            Debug.Log($"Perfect！差值 {minDistance:F3}s 连击 x{combo}");
             lastProcessedBeatTime = lastBeatTime;
         }
         else if (minDistance <= goodWindow)
         {
             judgeResult = "Good";
             combo++;
-            Debug.Log("Good！差值 {minDistance:F3}s 连击 x{combo}");
+            Debug.Log($"Good！差值 {minDistance:F3}s 连击 x{combo}");
             lastProcessedBeatTime = lastBeatTime;
         }
         else
         {
             judgeResult = "Miss";
             combo = 0;
-            Debug.Log(" Miss！差值 {minDistance:F3}s 连击中断");
+            Debug.Log($"Miss！差值 {minDistance:F3}s 连击中断");
         }
 
         if (combo > maxCombo) maxCombo = combo;
 
-        // Cube变色
         if (cubeMaterial != null)
         {
             switch (judgeResult)
@@ -225,14 +217,12 @@ public class RhythmGameCore : MonoBehaviour
             Invoke("ResetCubeColor", 0.3f);
         }
 
-        // 判定文字弹窗
         if (judgeTextPrefab != null && canvasTransform != null)
         {
             GameObject textObj = CreateJudgeText(judgeResult);
             if (textObj != null) StartCoroutine(AnimateFloatingText(textObj));
         }
 
-        // 连击数字
         if (comboText != null)
         {
             if (combo >= 2)
@@ -349,14 +339,14 @@ public class RhythmGameCore : MonoBehaviour
         string path = Application.dataPath + "/" + beatFilePath;
         if (!System.IO.File.Exists(path))
         {
-            Debug.LogWarning("节拍文件不存在: {path}，请先录制节拍");
+            Debug.LogWarning($"节拍文件不存在: {path}，请先录制节拍");
             return;
         }
 
         string json = System.IO.File.ReadAllText(path);
         BeatData data = JsonUtility.FromJson<BeatData>(json);
         manualBeats = data.beats;
-        Debug.Log("加载了 {manualBeats.Length} 个手动节拍点");
+        Debug.Log($"加载了 {manualBeats.Length} 个手动节拍点");
     }
 
     [System.Serializable]
