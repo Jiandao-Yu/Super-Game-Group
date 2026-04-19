@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
-using System.Collections.Generic;
 
 public class RhythmGameCore : MonoBehaviour
 {
@@ -26,6 +25,8 @@ public class RhythmGameCore : MonoBehaviour
 
     [Header("=== 节拍圆圈预告 ===")]
     public float ringGrowDuration = 0.8f;
+    public float ringMaxScale = 1.6f;
+    public float ringMinScale = 0.6f;
 
     [Header("=== 手动卡点模式 ===")]
     public string beatFilePath = "beats.txt";
@@ -54,7 +55,8 @@ public class RhythmGameCore : MonoBehaviour
     void Start()
     {
         if (audioSource == null) audioSource = GetComponent<AudioSource>();
-        if (audioSource != null && musicList.Length > 0)
+
+        if (audioSource != null && musicList != null && musicList.Length > 0)
         {
             audioSource.clip = musicList[0];
         }
@@ -65,7 +67,10 @@ public class RhythmGameCore : MonoBehaviour
             if (cubeRenderer != null) cubeMaterial = cubeRenderer.material;
         }
 
-        if (beatRing != null) beatRing.transform.localScale = Vector3.one * 0.5f;
+        if (beatRing != null)
+        {
+            beatRing.transform.localScale = Vector3.one * ringMaxScale;
+        }
 
         LoadManualBeats();
 
@@ -102,16 +107,26 @@ public class RhythmGameCore : MonoBehaviour
 
         float timeToNextBeat = GetTimeToNextBeat();
 
-        if (timeToNextBeat > 0 && timeToNextBeat <= ringGrowDuration)
+        // 离下一拍较远时，保持大环
+        if (timeToNextBeat > ringGrowDuration)
         {
-            float progress = 1f - (timeToNextBeat / ringGrowDuration);
-            float targetScale = Mathf.Lerp(0.5f, 1.5f, progress);
-            beatRing.transform.localScale = Vector3.one * targetScale;
+            beatRing.transform.localScale = Vector3.one * ringMaxScale;
+
+            Color idleColor = beatRing.color;
+            idleColor.a = 0.45f;
+            beatRing.color = idleColor;
+            return;
         }
-        else if (timeToNextBeat > ringGrowDuration)
-        {
-            beatRing.transform.localScale = Vector3.one * 0.5f;
-        }
+
+        // 距离下一拍越近，圆环越小
+        float progress = 1f - (timeToNextBeat / ringGrowDuration);
+        float targetScale = Mathf.Lerp(ringMaxScale, ringMinScale, progress);
+        beatRing.transform.localScale = Vector3.one * targetScale;
+
+        // 越接近拍点越亮
+        Color c = beatRing.color;
+        c.a = Mathf.Lerp(0.45f, 1f, progress);
+        beatRing.color = c;
     }
 
     float GetTimeToNextBeat()
@@ -121,7 +136,7 @@ public class RhythmGameCore : MonoBehaviour
 
         float nextBeat = manualBeats[beatIndex] + beatOffset;
         float timeToNext = nextBeat - audioSource.time;
-        return Mathf.Max(0.05f, timeToNext);
+        return Mathf.Max(0.01f, timeToNext);
     }
 
     void OnBeatDetected(float beatTime)
@@ -148,7 +163,8 @@ public class RhythmGameCore : MonoBehaviour
 
         Color originalColor = beatRing.color;
         beatRing.color = Color.white;
-        float elapsed = 0;
+
+        float elapsed = 0f;
         while (elapsed < 0.1f)
         {
             elapsed += Time.deltaTime;
@@ -156,6 +172,7 @@ public class RhythmGameCore : MonoBehaviour
             beatRing.color = Color.Lerp(Color.white, originalColor, t);
             yield return null;
         }
+
         beatRing.color = originalColor;
     }
 
@@ -172,7 +189,8 @@ public class RhythmGameCore : MonoBehaviour
             Debug.Log("节拍已用过！Miss，连击中断");
 
             if (cubeMaterial != null) cubeMaterial.color = missColor;
-            Invoke("ResetCubeColor", 0.3f);
+            Invoke(nameof(ResetCubeColor), 0.3f);
+
             if (comboText != null) comboText.text = "";
 
             hasBufferedInput = false;
@@ -210,11 +228,18 @@ public class RhythmGameCore : MonoBehaviour
         {
             switch (judgeResult)
             {
-                case "Perfect": cubeMaterial.color = perfectColor; break;
-                case "Good": cubeMaterial.color = goodColor; break;
-                case "Miss": cubeMaterial.color = missColor; break;
+                case "Perfect":
+                    cubeMaterial.color = perfectColor;
+                    break;
+                case "Good":
+                    cubeMaterial.color = goodColor;
+                    break;
+                case "Miss":
+                    cubeMaterial.color = missColor;
+                    break;
             }
-            Invoke("ResetCubeColor", 0.3f);
+
+            Invoke(nameof(ResetCubeColor), 0.3f);
         }
 
         if (judgeTextPrefab != null && canvasTransform != null)
@@ -250,9 +275,15 @@ public class RhythmGameCore : MonoBehaviour
             tmpText.text = judgeResult;
             switch (judgeResult)
             {
-                case "Perfect": tmpText.color = perfectColor; break;
-                case "Good": tmpText.color = goodColor; break;
-                case "Miss": tmpText.color = missColor; break;
+                case "Perfect":
+                    tmpText.color = perfectColor;
+                    break;
+                case "Good":
+                    tmpText.color = goodColor;
+                    break;
+                case "Miss":
+                    tmpText.color = missColor;
+                    break;
             }
         }
 
@@ -274,7 +305,7 @@ public class RhythmGameCore : MonoBehaviour
     {
         TMP_Text text = obj.GetComponent<TMP_Text>();
         float duration = 0.8f;
-        float elapsed = 0;
+        float elapsed = 0f;
         RectTransform rect = obj.GetComponent<RectTransform>();
         Vector3 startPos = rect.anchoredPosition;
 
@@ -282,15 +313,19 @@ public class RhythmGameCore : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float t = elapsed / duration;
+
             rect.anchoredPosition = startPos + Vector3.up * (t * 80f);
+
             if (text != null)
             {
                 Color c = text.color;
                 c.a = 1f - t;
                 text.color = c;
             }
+
             yield return null;
         }
+
         Destroy(obj);
     }
 
@@ -300,8 +335,12 @@ public class RhythmGameCore : MonoBehaviour
         if (lastBeatTime > 0 && Time.time - lastBeatTime <= goodWindow)
         {
             float diff = Mathf.Abs(Time.time - lastBeatTime);
-            if (diff <= perfectWindow) judgeResult = "Perfect";
-            else judgeResult = "Good";
+
+            if (diff <= perfectWindow)
+                judgeResult = "Perfect";
+            else
+                judgeResult = "Good";
+
             currentCombo = ++combo;
             return true;
         }
@@ -315,11 +354,12 @@ public class RhythmGameCore : MonoBehaviour
 
     public void SwitchMusic(int index)
     {
-        if (index >= 0 && index < musicList.Length)
+        if (audioSource != null && musicList != null && index >= 0 && index < musicList.Length)
         {
             audioSource.Stop();
             audioSource.clip = musicList[index];
             audioSource.Play();
+
             ResetDetector();
             beatIndex = 0;
             lastProcessedBeatTime = -1f;
@@ -332,6 +372,12 @@ public class RhythmGameCore : MonoBehaviour
         maxCombo = 0;
         lastBeatTime = 0;
         hasBufferedInput = false;
+        lastClickTime = -1f;
+
+        if (beatRing != null)
+        {
+            beatRing.transform.localScale = Vector3.one * ringMaxScale;
+        }
     }
 
     void LoadManualBeats()
@@ -346,7 +392,9 @@ public class RhythmGameCore : MonoBehaviour
         string json = System.IO.File.ReadAllText(path);
         BeatData data = JsonUtility.FromJson<BeatData>(json);
         manualBeats = data.beats;
-        Debug.Log($"加载了 {manualBeats.Length} 个手动节拍点");
+
+        if (manualBeats != null)
+            Debug.Log($"加载了 {manualBeats.Length} 个手动节拍点");
     }
 
     [System.Serializable]
