@@ -11,17 +11,16 @@ public class NoteController : MonoBehaviour
     public Transform noteParent;
 
     [Header("=== 移动设置 ===")]
-    public float spawnOffset = 3f;          // 提前生成时间（秒）
-    public float trackLength = 800f;        // 轨道长度（从起点到判定线的像素距离）
+    public float noteSpeed = 300f;           // 移动速度（像素/秒）
+    public float spawnOffset = 3f;           // 提前生成时间（秒）
+    public float missDistance = 150f;        // 超出判定线多少像素后算 Miss
 
     [Header("=== 视觉设置 ===")]
     public Color noteColor = Color.white;
     public float noteSize = 50f;
 
-    // 内部数据
     private List<MovingNote> activeNotes = new List<MovingNote>();
     private float judgeLineX;
-    private float startX;
     private bool isSubscribed = false;
 
     void Start()
@@ -32,9 +31,6 @@ public class NoteController : MonoBehaviour
         if (judgeLine != null)
             judgeLineX = judgeLine.anchoredPosition.x;
 
-        startX = judgeLineX - trackLength;
-
-        // 订阅判定结果事件
         if (!isSubscribed)
         {
             RhythmGameCore.OnJudgeResult += OnJudgeResult;
@@ -49,6 +45,7 @@ public class NoteController : MonoBehaviour
         float currentTime = rhythmCore.GetCurrentMusicTime();
         float[] beats = rhythmCore.GetAllBeatTimes();
 
+        // 生成新音符
         if (beats != null)
         {
             foreach (float beatTime in beats)
@@ -63,26 +60,43 @@ public class NoteController : MonoBehaviour
             }
         }
 
-        // 更新所有音符位置
-        UpdateNotesPosition();
-    }
-
-    void UpdateNotesPosition()
-    {
-        float currentTime = rhythmCore.GetCurrentMusicTime();
-
-        foreach (var note in activeNotes)
+        // 更新音符位置（用速度移动）
+        float deltaTime = Time.deltaTime;
+        for (int i = activeNotes.Count - 1; i >= 0; i--)
         {
-            float timeToBeat = note.beatTime - currentTime;
-            float progress = timeToBeat / spawnOffset;
-            float x = Mathf.Lerp(judgeLineX, startX, progress);
-            note.rectTransform.anchoredPosition = new Vector2(x, note.rectTransform.anchoredPosition.y);
+            MovingNote note = activeNotes[i];
+
+            // 向右移动
+            float newX = note.rectTransform.anchoredPosition.x + noteSpeed * deltaTime;
+            note.rectTransform.anchoredPosition = new Vector2(newX, note.rectTransform.anchoredPosition.y);
+
+            // 超出判定线右侧 missDistance，且未被判定，算 Miss
+            if (newX > judgeLineX + missDistance && !note.wasJudged)
+            {
+                Debug.Log($"音符 {note.beatTime:F2}s 未击中，Miss");
+                activeNotes.RemoveAt(i);
+                Destroy(note.gameObject);
+            }
+            // 超出屏幕右侧太远也销毁
+            else if (newX > judgeLineX + 500f)
+            {
+                activeNotes.RemoveAt(i);
+                Destroy(note.gameObject);
+            }
         }
     }
 
     void SpawnNote(float beatTime)
     {
         if (notePrefab == null) return;
+
+        // 计算初始 X 位置：根据剩余时间算出应该在的位置
+        float currentTime = rhythmCore.GetCurrentMusicTime();
+        float timeToBeat = beatTime - currentTime;
+        float startX = judgeLineX - noteSpeed * timeToBeat;
+
+        // 限制最大初始位置（不要太靠左）
+        startX = Mathf.Max(startX, judgeLineX - 1200f);
 
         GameObject noteObj = Instantiate(notePrefab, noteParent);
         RectTransform rect = noteObj.GetComponent<RectTransform>();
@@ -97,7 +111,8 @@ public class NoteController : MonoBehaviour
         {
             gameObject = noteObj,
             rectTransform = rect,
-            beatTime = beatTime
+            beatTime = beatTime,
+            wasJudged = false
         });
     }
 
@@ -121,6 +136,8 @@ public class NoteController : MonoBehaviour
 
         foreach (var note in activeNotes)
         {
+            if (note.wasJudged) continue;
+
             float dist = Mathf.Abs(note.rectTransform.anchoredPosition.x - judgeLineX);
             if (dist < minDist)
             {
@@ -131,6 +148,7 @@ public class NoteController : MonoBehaviour
 
         if (closest != null)
         {
+            closest.wasJudged = true;
             StartCoroutine(AnimateNoteHit(closest, judgeResult));
         }
     }
@@ -177,5 +195,6 @@ public class NoteController : MonoBehaviour
         public GameObject gameObject;
         public RectTransform rectTransform;
         public float beatTime;
+        public bool wasJudged = false;
     }
 }
