@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using System.Collections.Generic;
 
 public class RhythmGameCore : MonoBehaviour
 {
@@ -18,15 +19,9 @@ public class RhythmGameCore : MonoBehaviour
 
     [Header("=== 视觉反馈（拖拽进来）===")]
     public GameObject cubeForFeedback;
-    public Image beatRing;
     public TMP_Text comboText;
     public Transform canvasTransform;
     public GameObject judgeTextPrefab;
-
-    [Header("=== 节拍圆圈预告 ===")]
-    public float ringGrowDuration = 0.8f;
-    public float ringMaxScale = 1.6f;
-    public float ringMinScale = 0.6f;
 
     [Header("=== 手动卡点模式 ===")]
     public string beatFilePath = "beats.txt";
@@ -48,7 +43,7 @@ public class RhythmGameCore : MonoBehaviour
     private Renderer cubeRenderer;
     private Material cubeMaterial;
 
-    // 事件
+    // 事件（给 NoteController 和组长用）
     public static event System.Action<string, int> OnJudgeResult;
     public static event System.Action<int> OnComboChanged;
 
@@ -65,11 +60,6 @@ public class RhythmGameCore : MonoBehaviour
         {
             cubeRenderer = cubeForFeedback.GetComponent<Renderer>();
             if (cubeRenderer != null) cubeMaterial = cubeRenderer.material;
-        }
-
-        if (beatRing != null)
-        {
-            beatRing.transform.localScale = Vector3.one * ringMaxScale;
         }
 
         LoadManualBeats();
@@ -91,8 +81,6 @@ public class RhythmGameCore : MonoBehaviour
             }
         }
 
-        UpdateBeatRing();
-
         if (Input.GetMouseButtonDown(0) || Input.GetKeyDown(KeyCode.Space))
         {
             lastClickTime = Time.time;
@@ -101,53 +89,10 @@ public class RhythmGameCore : MonoBehaviour
         }
     }
 
-    void UpdateBeatRing()
-    {
-        if (beatRing == null) return;
-
-        float timeToNextBeat = GetTimeToNextBeat();
-
-        // 离下一拍较远时，保持大环
-        if (timeToNextBeat > ringGrowDuration)
-        {
-            beatRing.transform.localScale = Vector3.one * ringMaxScale;
-
-            Color idleColor = beatRing.color;
-            idleColor.a = 0.45f;
-            beatRing.color = idleColor;
-            return;
-        }
-
-        // 距离下一拍越近，圆环越小
-        float progress = 1f - (timeToNextBeat / ringGrowDuration);
-        float targetScale = Mathf.Lerp(ringMaxScale, ringMinScale, progress);
-        beatRing.transform.localScale = Vector3.one * targetScale;
-
-        // 越接近拍点越亮
-        Color c = beatRing.color;
-        c.a = Mathf.Lerp(0.45f, 1f, progress);
-        beatRing.color = c;
-    }
-
-    float GetTimeToNextBeat()
-    {
-        if (manualBeats == null || beatIndex >= manualBeats.Length)
-            return ringGrowDuration;
-
-        float nextBeat = manualBeats[beatIndex] + beatOffset;
-        float timeToNext = nextBeat - audioSource.time;
-        return Mathf.Max(0.01f, timeToNext);
-    }
-
     void OnBeatDetected(float beatTime)
     {
         lastBeatTime = Time.time;
         lastProcessedBeatTime = -1f;
-
-        if (beatRing != null)
-        {
-            StartCoroutine(BeatRingFlash());
-        }
 
         Debug.Log($"节拍！{beatTime:F2}s (音乐时间)");
 
@@ -155,25 +100,6 @@ public class RhythmGameCore : MonoBehaviour
         {
             EvaluateInput();
         }
-    }
-
-    System.Collections.IEnumerator BeatRingFlash()
-    {
-        if (beatRing == null) yield break;
-
-        Color originalColor = beatRing.color;
-        beatRing.color = Color.white;
-
-        float elapsed = 0f;
-        while (elapsed < 0.1f)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / 0.1f;
-            beatRing.color = Color.Lerp(Color.white, originalColor, t);
-            yield return null;
-        }
-
-        beatRing.color = originalColor;
     }
 
     void EvaluateInput()
@@ -238,7 +164,6 @@ public class RhythmGameCore : MonoBehaviour
                     cubeMaterial.color = missColor;
                     break;
             }
-
             Invoke(nameof(ResetCubeColor), 0.3f);
         }
 
@@ -352,6 +277,19 @@ public class RhythmGameCore : MonoBehaviour
         }
     }
 
+    // ========== 给 NoteController 调用的接口 ==========
+    public float[] GetAllBeatTimes()
+    {
+        return manualBeats;
+    }
+
+    public float GetCurrentMusicTime()
+    {
+        if (audioSource != null)
+            return audioSource.time;
+        return 0f;
+    }
+
     public void SwitchMusic(int index)
     {
         if (audioSource != null && musicList != null && index >= 0 && index < musicList.Length)
@@ -373,11 +311,6 @@ public class RhythmGameCore : MonoBehaviour
         lastBeatTime = 0;
         hasBufferedInput = false;
         lastClickTime = -1f;
-
-        if (beatRing != null)
-        {
-            beatRing.transform.localScale = Vector3.one * ringMaxScale;
-        }
     }
 
     void LoadManualBeats()
