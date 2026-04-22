@@ -21,6 +21,9 @@ public class PlayerController : MonoBehaviour
     [Header("Rhythm System")]
     public RhythmGameCore rhythmSystem;
 
+    [Header("Visual")]
+    public Transform visualRoot;
+
     private Vector3 velocity;
     private bool isGrounded;
     private bool isFlipped = false;
@@ -31,6 +34,7 @@ public class PlayerController : MonoBehaviour
         controller = GetComponent<CharacterController>();
         isFlipped = false;
         transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+        UpdateVisualRotation();
     }
 
     void Update()
@@ -59,7 +63,7 @@ public class PlayerController : MonoBehaviour
                 return;
             }
 
-            // 关键修复：无论成功还是失败，只要点了一次，就进入冷却
+            // 无论成功还是失败，只要点了一次，就进入冷却
             lastFlipTime = Time.time;
 
             if (rhythmSystem == null)
@@ -157,6 +161,25 @@ public class PlayerController : MonoBehaviour
         {
             transform.rotation = Quaternion.Euler(0f, 0f, 180f);
             velocity.y = flipImpulse;
+        }
+
+        UpdateVisualRotation();
+    }
+
+    void UpdateVisualRotation()
+    {
+        if (visualRoot == null) return;
+
+        // 这里的逻辑是：
+        // Player 翻转时，模型仍然保持“前后朝向正确”
+        // 如果你模型默认朝向本来就反了，把 0 和 180 对调即可
+        if (!isFlipped)
+        {
+            visualRoot.localRotation = Quaternion.Euler(0f, 0f, 0f);
+        }
+        else
+        {
+            visualRoot.localRotation = Quaternion.Euler(0f, 180f, 0f);
         }
     }
 
