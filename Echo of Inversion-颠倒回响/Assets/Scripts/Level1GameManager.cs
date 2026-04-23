@@ -18,20 +18,8 @@ public class Level1GameManager : MonoBehaviour
     {
         Time.timeScale = 1f;
 
-        Debug.Log("[Level1GameManager] Start");
-
-        if (gameplayPanel != null)
-            gameplayPanel.SetActive(true);
-        else
-            Debug.LogWarning("[Level1GameManager] gameplayPanel 没有拖进去");
-
-        if (failPanel != null)
-            failPanel.SetActive(false);
-        else
-            Debug.LogWarning("[Level1GameManager] failPanel 没有拖进去");
-
-        if (level1Bgm == null)
-            Debug.LogWarning("[Level1GameManager] level1Bgm 没有拖进去");
+        if (gameplayPanel != null) gameplayPanel.SetActive(true);
+        if (failPanel != null) failPanel.SetActive(false);
     }
 
     void Update()
@@ -43,10 +31,9 @@ public class Level1GameManager : MonoBehaviour
             musicStarted = true;
         }
 
-        // 音乐播完且还没碰到 zhong1 = 失败
+        // 音乐结束且还没到终点 = 失败
         if (level1Bgm != null && musicStarted && !level1Bgm.isPlaying && !goalReached)
         {
-            Debug.Log("[Level1GameManager] 音乐结束，第一关失败");
             ShowFail();
         }
     }
@@ -55,20 +42,13 @@ public class Level1GameManager : MonoBehaviour
     {
         if (levelEnded) return;
 
-        Debug.Log("[Level1GameManager] ReachGoal 被触发，第一关成功");
-
         goalReached = true;
         levelEnded = true;
 
         if (level1Bgm != null)
-        {
             level1Bgm.Pause();
-            Debug.Log("[Level1GameManager] 音乐已暂停");
-        }
 
         Time.timeScale = 1f;
-
-        // 直接回 Duan-start，并进入第6章
         StoryManager.pendingChapter = 6;
         SceneManager.LoadScene("Duan-start");
     }
@@ -77,35 +57,22 @@ public class Level1GameManager : MonoBehaviour
     {
         if (levelEnded) return;
 
-        Debug.Log("[Level1GameManager] ShowFail 被触发");
-
         levelEnded = true;
 
-        if (gameplayPanel != null)
-        {
-            gameplayPanel.SetActive(false);
-            Debug.Log("[Level1GameManager] gameplayPanel 已关闭");
-        }
-
         if (failPanel != null)
-        {
             failPanel.SetActive(true);
-            Debug.Log("[Level1GameManager] failPanel 已打开");
-        }
+
+        if (gameplayPanel != null)
+            gameplayPanel.SetActive(false);
 
         if (level1Bgm != null)
-        {
             level1Bgm.Pause();
-            Debug.Log("[Level1GameManager] 音乐已暂停");
-        }
 
         Time.timeScale = 0f;
     }
 
     public void RestartLevel()
     {
-        Debug.Log("[Level1GameManager] RestartLevel");
-
         Time.timeScale = 1f;
         SceneManager.LoadScene(SceneManager.GetActiveScene().name);
     }

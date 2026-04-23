@@ -24,17 +24,27 @@ public class PlayerController : MonoBehaviour
     [Header("Visual")]
     public Transform visualRoot;
 
+    [Header("2.5D Lock")]
+    public bool lockZPosition = true;
+
     private Vector3 velocity;
     private bool isGrounded;
     private bool isFlipped = false;
     private float lastFlipTime = -999f;
+
+    // 锁死角色所在的 Z 平面，防止被障碍物挤前后
+    private float fixedZ;
 
     void Start()
     {
         controller = GetComponent<CharacterController>();
         isFlipped = false;
         transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+
+        fixedZ = transform.position.z;
+
         UpdateVisualRotation();
+        Force2DPlaneLock();
     }
 
     void Update()
@@ -43,6 +53,9 @@ public class PlayerController : MonoBehaviour
         HandleMove();
         HandleJumpAndGravity();
         HandleFlipInput();
+
+        // 每帧末尾再锁一次，确保不会被碰撞挤出平面
+        Force2DPlaneLock();
     }
 
     void HandleFlipInput()
@@ -101,9 +114,13 @@ public class PlayerController : MonoBehaviour
 
     void HandleMove()
     {
-        float moveX = Input.GetAxis("Horizontal");
+        float moveX = Input.GetAxisRaw("Horizontal");
         Vector3 move = new Vector3(moveX, 0f, 0f);
+
         controller.Move(move * moveSpeed * Time.deltaTime);
+
+        // 左右移动后立刻锁平面
+        Force2DPlaneLock();
     }
 
     void HandleJumpAndGravity()
@@ -146,6 +163,9 @@ public class PlayerController : MonoBehaviour
         }
 
         controller.Move(velocity * Time.deltaTime);
+
+        // 重力/跳跃后也锁平面
+        Force2DPlaneLock();
     }
 
     void FlipGravity()
@@ -164,6 +184,7 @@ public class PlayerController : MonoBehaviour
         }
 
         UpdateVisualRotation();
+        Force2DPlaneLock();
     }
 
     void UpdateVisualRotation()
@@ -189,6 +210,15 @@ public class PlayerController : MonoBehaviour
         Vector3 origin = bounds.center;
         float distance = bounds.extents.y + ceilingCheckDistance;
         return Physics.Raycast(origin, Vector3.up, distance, groundLayer);
+    }
+
+    void Force2DPlaneLock()
+    {
+        if (!lockZPosition) return;
+
+        Vector3 pos = transform.position;
+        pos.z = fixedZ;
+        transform.position = pos;
     }
 
     void OnDrawGizmosSelected()

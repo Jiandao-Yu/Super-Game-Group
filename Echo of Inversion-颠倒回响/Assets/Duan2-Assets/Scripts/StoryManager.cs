@@ -17,7 +17,7 @@ public class StoryManager : MonoBehaviour
     public List<StoryChapter> chapters = new List<StoryChapter>();
 
     [Header("Game Manager References")]
-    public GameObject gameplayPanel;
+    public GameObject gameplayPanel;   // 保留引用，但不再显示
     public GameObject startPanel;
 
     // 用于跨场景回到 Duan-start 后，自动跳到指定章节
@@ -49,6 +49,10 @@ public class StoryManager : MonoBehaviour
 
         if (chapters.Count == 0)
             SetupFullStory();
+
+        // 无论什么情况，Duan 的 GameplayPanel 都不显示
+        if (gameplayPanel != null)
+            gameplayPanel.SetActive(false);
 
         // 如果是从第一关/第二关返回这个场景，自动续到指定章节
         if (pendingChapter >= 0)
@@ -350,11 +354,12 @@ public class StoryManager : MonoBehaviour
     {
         Time.timeScale = 1f;
 
+        // 保持原有逻辑接口，但不再显示 Duan 的 GameplayPanel
         if (startPanel != null)
             startPanel.SetActive(false);
 
         if (gameplayPanel != null)
-            gameplayPanel.SetActive(true);
+            gameplayPanel.SetActive(false);
 
         if (level == 1)
         {
@@ -391,6 +396,10 @@ public class StoryManager : MonoBehaviour
     void ReturnToMainMenu()
     {
         Time.timeScale = 1f;
+
+        if (gameplayPanel != null)
+            gameplayPanel.SetActive(false);
+
         SceneManager.LoadScene("Duan-start");
     }
 
