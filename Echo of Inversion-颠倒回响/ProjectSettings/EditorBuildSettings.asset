@@ -4,5 +4,14 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Duan2-Assets/Scenes/Duan-start.unity
+    guid: a9610139dd9d0f741a63cf7dd41846cf
+  - enabled: 1
+    path: Assets/Scenes/SCN_Level01_Test.unity
+    guid: 40177707380e3864a93617992d627320
+  - enabled: 1
+    path: Assets/others/scene2.unity
+    guid: 5b054332041975b4a94ab899e597760a
   m_configObjects: {}
