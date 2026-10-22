@@ -32,7 +32,7 @@ public class RhythmGameCore : MonoBehaviour
     [Header("=== 进度条尺寸 ===")]
     public float progressBarWidth = 800f;
     public float progressBarHeight = 20f;
-    public float progressBarTopOffset = -30f;  // 距离顶部的偏移（负值=向下）
+    public float progressBarTopOffset = -30f;
 
     [Header("=== 打击感增强 ===")]
     public bool enableCameraShake = true;
@@ -72,14 +72,9 @@ public class RhythmGameCore : MonoBehaviour
             RectTransform rect = musicProgressBar.GetComponent<RectTransform>();
             if (rect != null)
             {
-                // 设置大小
                 rect.sizeDelta = new Vector2(progressBarWidth, progressBarHeight);
-
-                // 设置锚点为顶部居中
                 rect.anchorMin = new Vector2(0.5f, 1f);
                 rect.anchorMax = new Vector2(0.5f, 1f);
-
-                // 设置位置
                 rect.anchoredPosition = new Vector2(0, progressBarTopOffset);
             }
         }
@@ -89,7 +84,18 @@ public class RhythmGameCore : MonoBehaviour
 
     void Update()
     {
-        if (audioSource == null || !audioSource.isPlaying) return;
+        if (audioSource == null) return;
+
+        // 音乐停止时重置节拍索引，不执行后续逻辑
+        if (!audioSource.isPlaying)
+        {
+            if (beatIndex != 0)
+            {
+                beatIndex = 0;
+                lastProcessedBeatTime = -1f;
+            }
+            return;
+        }
 
         // 更新音乐进度条
         if (musicProgressBar != null && audioSource != null && audioSource.clip != null)
@@ -97,7 +103,6 @@ public class RhythmGameCore : MonoBehaviour
             float progress = audioSource.time / audioSource.clip.length;
             musicProgressBar.fillAmount = progress;
 
-            // 进度条粒子效果（每隔一段时间触发）
             if (Time.frameCount % 45 == 0)
             {
                 PlayProgressParticle();
@@ -126,7 +131,6 @@ public class RhythmGameCore : MonoBehaviour
     {
         if (progressParticle != null && musicProgressBar != null)
         {
-            // 设置粒子位置为进度条当前填充位置
             RectTransform progressRect = musicProgressBar.GetComponent<RectTransform>();
             if (progressRect != null)
             {
@@ -136,7 +140,6 @@ public class RhythmGameCore : MonoBehaviour
                 progressParticle.transform.localPosition = new Vector3(particleX, 0, 0);
             }
 
-            // 每次播放时，随机调整一下参数让效果更丰富
             var main = progressParticle.main;
             main.startSize = Random.Range(10f, 20f);
             main.startSpeed = Random.Range(1f, 2.5f);
@@ -264,7 +267,7 @@ public class RhythmGameCore : MonoBehaviour
         {
             float judgeLineY = judgeLine != null ? judgeLine.anchoredPosition.y : 0;
             rect.anchoredPosition = new Vector2(0, judgeLineY + 30);
-            rect.sizeDelta = new Vector2(400, 200);   //判定文字大小
+            rect.sizeDelta = new Vector2(400, 200);
         }
 
         return imgObj;
@@ -363,8 +366,6 @@ public class RhythmGameCore : MonoBehaviour
             audioSource.Play();
 
             ResetDetector();
-            beatIndex = 0;
-            lastProcessedBeatTime = -1f;
         }
     }
 
@@ -375,6 +376,8 @@ public class RhythmGameCore : MonoBehaviour
         lastBeatTime = 0;
         hasBufferedInput = false;
         lastClickTime = -1f;
+        beatIndex = 0;
+        lastProcessedBeatTime = -1f;
     }
 
     void LoadManualBeats()
